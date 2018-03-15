@@ -9,12 +9,12 @@
 /**
  * Smarty combine function plugin
  *
- * Type:    function<br>
- * Name:    combine<br>
+ * Type:    function
+ * Name:    combine
  * Date:    September 5, 2015
  * Purpose: Combine content from several JS or CSS files into one
  * Input:   string to count
- * Example: {combine input=$array_of_files_to_combine output=$path_to_output_file use_true_path=true age=$seconds_to_try_recombine_file}
+ * Example: {combine input=$array_of_files_to_combine output=$path_to_output_file age=$seconds_to_try_recombine_file}
  *
  * @author Gorochov Ivan <dead23angel at gmail dot com>
  * @version 1.0
@@ -29,6 +29,12 @@ function smarty_function_combine($params, &$smarty)
     require_once dirname(__FILE__) . '/minify/JSmin.php';
     require_once dirname(__FILE__) . '/minify/CSSmin.php';
 
+    $skin_folder = (string)$smarty->tpl_vars["SKIN_FOLDER"]->value;
+    $skin_subset = (string)$smarty->tpl_vars["SKIN_SUBSET"]->value;
+    foreach(array('input','output') as $key) {
+        $params[$key] = str_replace(array('{$SKIN_SUBSET}','{$SKIN_FOLDER}'), array($skin_subset, $skin_folder), $params[$key]);
+    }
+
     /**
      * Build combined file
      *
@@ -41,7 +47,7 @@ function smarty_function_combine($params, &$smarty)
             $lastest_mtime = 0;
 
             foreach ($params['input'] as $item) {
-                $mtime = filemtime($params['file_path'] . $item);
+                $mtime = filemtime(CC_ROOT_DIR . '/' . $item);
                 $lastest_mtime = max($lastest_mtime, $mtime);
                 $filelist[] = array('name' => $item, 'time' => $mtime);
             }
@@ -50,9 +56,9 @@ function smarty_function_combine($params, &$smarty)
                 $output_filename = '';
                 foreach ($filelist as $file) {
                     if ($params['type'] == 'js') {
-                        $output_filename .= '<script type="text/javascript" src="' . base_url() . $file['name'].'" charset="utf-8"></script>' . "\n";
+                        $output_filename .= '<script type="text/javascript" src="' . CC_ROOT_REL . $file['name'].'" charset="utf-8"></script>' . "\n";
                     } elseif ($params['type'] == 'css') {
-                        $output_filename .= '<link type="text/css" rel="stylesheet" href="' . base_url() . $file['name'] . '" />' . "\n";
+                        $output_filename .= '<link type="text/css" rel="stylesheet" href="' . CC_ROOT_REL . $file['name'] . '" />' . "\n";
                     }
                 }
 
@@ -62,13 +68,13 @@ function smarty_function_combine($params, &$smarty)
 
             $last_cmtime = 0;
 
-            if (file_exists($params['file_path'] . $params['cache_file_name'])) {
-                $last_cmtime = file_get_contents($params['file_path'] . $params['cache_file_name']);
+            if (file_exists(CC_ROOT_DIR . '/' . $params['cache_file_name'])) {
+                $last_cmtime = file_get_contents(CC_ROOT_DIR . '/' . $params['cache_file_name']);
             }
 
             if ($lastest_mtime > $last_cmtime) {
                 $glob_mask = preg_replace('/\.(js|css)$/i', '_*.$1', $params['output']);
-                $files_to_cleanup = glob($params['file_path'] . $glob_mask);
+                $files_to_cleanup = glob(CC_ROOT_DIR . '/' . $glob_mask);
 
                 foreach ($files_to_cleanup as $cfile) {
                     if (is_file($cfile) && file_exists($cfile)) {
@@ -78,39 +84,39 @@ function smarty_function_combine($params, &$smarty)
 
                 $output_filename = preg_replace('/\.(js|css)$/i', date('_YmdHis.', $lastest_mtime) . '$1', $params['output']);
 
-                $dirname = dirname($params['file_path'] . $output_filename);
+                $dirname = dirname(CC_ROOT_DIR . '/' . $output_filename);
 
                 if ( ! is_dir($dirname)) {
                     mkdir($dirname, 0755, true);
                 }
 
-                $fh = fopen($params['file_path'] . $output_filename, 'a+');
+                $fh = fopen(CC_ROOT_DIR . '/' . $output_filename, 'a+');
 
                 if (flock($fh, LOCK_EX)) {
                     foreach ($filelist as $file) {
                         $min = '';
 
                         if ($params['type'] == 'js') {
-                            $min = JSMin::minify(file_get_contents($params['file_path'] . $file['name']));
+                            $min = JSMin::minify(file_get_contents(CC_ROOT_DIR . '/' . $file['name']));
                         } elseif ($params['type'] == 'css') {
-                            $min = CSSMin::minify(file_get_contents($params['file_path'] . $file['name']));
+                            $min = CSSMin::minify(file_get_contents(CC_ROOT_DIR . '/' . $file['name']));
                         } else {
                             fputs($fh, PHP_EOL . PHP_EOL . '/* ' . $file['name'] . ' @ ' . date('c', $file['time']) . ' */' . PHP_EOL . PHP_EOL);
-                            $min = file_get_contents($params['file_path'] . $file['name']);
+                            $min = file_get_contents(CC_ROOT_DIR . '/' . $file['name']);
                         }
 
                         fputs($fh, $min);
                     }
 
                     flock($fh, LOCK_UN);
-                    file_put_contents($params['file_path'] . $params['cache_file_name'], $lastest_mtime, LOCK_EX);
+                    file_put_contents(CC_ROOT_DIR . '/' . $params['cache_file_name'], $lastest_mtime, LOCK_EX);
                 }
 
                 fclose($fh);
                 clearstatcache();
             }
 
-            touch($params['file_path'] . $params['cache_file_name']);
+            touch(CC_ROOT_DIR . '/' . $params['cache_file_name']);
             smarty_print_out($params);
         }
     }
@@ -125,11 +131,11 @@ function smarty_function_combine($params, &$smarty)
         {
             $last_mtime = 0;
 
-            if (file_exists($params['file_path'] . $params['cache_file_name'])) {
-                $last_mtime = file_get_contents($params['file_path'] . $params['cache_file_name']);
+            if (file_exists(CC_ROOT_DIR . '/' . $params['cache_file_name'])) {
+                $last_mtime = file_get_contents(CC_ROOT_DIR . '/' . $params['cache_file_name']);
             }
 
-            $output_filename = preg_replace('/\.(js|css)$/i', date('_YmdHis.', $last_mtime) . '$1', $params['output']);
+            $output_filename = CC_ROOT_REL.preg_replace('/\.(js|css)$/i', date('_YmdHis.', $last_mtime) . '$1', $params['output']);
 
             if ($params['type'] == 'js') {
                 echo '<script type="text/javascript" src="' . $output_filename . '" charset="utf-8"></script>';
@@ -140,36 +146,6 @@ function smarty_function_combine($params, &$smarty)
             }
         }
     }
-
-    /**
-     * This function gets the base url for the project where this plugin is used
-     * If this plugin is used within Code Igniter, the base_url() would have already been defined
-     */
-    if ( ! function_exists('base_url')) {
-        function base_url(){
-
-            return sprintf(
-                "%s://%s%s/",
-                isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http',
-                $_SERVER['HTTP_HOST'],
-                rtrim(dirname($_SERVER['PHP_SELF']), '/\\')
-            );
-        }
-    }
-
-    // The new 'use_true_path' option that tells this plugin to use the path to the files as it is
-    if ( isset($params['use_true_path']) && !is_bool($params['use_true_path'])) {
-        trigger_error('use_true_path must be boolean', E_USER_NOTICE);
-        return;
-    }
-
-    if ( ! isset($params['use_true_path'])) {
-        $params['use_true_path'] = false;
-    }
-
-    // use the relative path or the true path of the file based on the 'use_true_path' option passed in
-    $params['file_path'] = ($params['use_true_path']) ? '' : getenv('DOCUMENT_ROOT');
-
 
     if ( ! isset($params['input'])) {
         trigger_error('input cannot be empty', E_USER_NOTICE);
@@ -182,8 +158,8 @@ function smarty_function_combine($params, &$smarty)
     }
 
     foreach ($params['input'] as $file) {
-        if ( ! file_exists($params['file_path'] . $file)) {
-            trigger_error('File ' . $params['file_path'] . $file . ' does not exist!', E_USER_WARNING);
+        if ( ! file_exists(CC_ROOT_DIR . '/' . $file)) {
+            trigger_error('File ' . CC_ROOT_DIR . '/' . $file . ' does not exist!', E_USER_WARNING);
             return;
         }
 
@@ -222,12 +198,12 @@ function smarty_function_combine($params, &$smarty)
 
     $cache_file_name = $params['cache_file_name'];
 
-    if ($params['debug'] == true || ! file_exists($params['file_path'] . $cache_file_name)) {
+    if ($params['debug'] == true || ! file_exists(CC_ROOT_DIR . '/' . $cache_file_name)) {
         smarty_build_combine($params);
         return;
     }
 
-    $cache_mtime = filemtime($params['file_path'] . $cache_file_name);
+    $cache_mtime = filemtime(CC_ROOT_DIR . '/' . $cache_file_name);
 
     if ($cache_mtime + $params['age'] < time()) {
         smarty_build_combine($params);
