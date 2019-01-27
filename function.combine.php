@@ -56,7 +56,7 @@ function smarty_function_combine($params, &$smarty)
                 $output_filename = '';
                 foreach ($filelist as $file) {
                     if ($params['type'] == 'js') {
-                        $output_filename .= '<script type="text/javascript" src="' . CC_ROOT_REL . $file['name'].'" charset="utf-8"></script>' . "\n";
+                        $output_filename .= '<script src="' . CC_ROOT_REL . $file['name'].'" ></script>' . "\n";
                     } elseif ($params['type'] == 'css') {
                         $output_filename .= '<link type="text/css" rel="stylesheet" href="' . CC_ROOT_REL . $file['name'] . '" />' . "\n";
                     }
@@ -138,7 +138,7 @@ function smarty_function_combine($params, &$smarty)
             $output_filename = CC_ROOT_REL.preg_replace('/\.(js|css)$/i', date('_YmdHis.', $last_mtime) . '$1', $params['output']);
 
             if ($params['type'] == 'js') {
-                echo '<script type="text/javascript" src="' . $output_filename . '" charset="utf-8"></script>';
+                echo '<script src="' . $output_filename . '" ></script>';
             } elseif ($params['type'] == 'css') {
                 echo '<link type="text/css" rel="stylesheet" href="' . $output_filename . '" />';
             } else {
